@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/ActiveState/tail"
@@ -8,9 +9,15 @@ import (
 
 func main() {
 
+	var filename string
 	config := tail.Config{Follow: true}
+
+	flag.StringVar(&filename, "filename", "", "The file to tail.")
+	flag.StringVar(&filename, "F", "", " (shorthand for -filename)")
+	flag.Parse()
+
 	done := make(chan bool)
-	go tailFile("foo.txt", config, done)
+	go tailFile(filename, config, done)
 	<-done
 }
 
