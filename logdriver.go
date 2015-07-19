@@ -16,6 +16,11 @@ func main() {
 	flag.StringVar(&filename, "F", "", " (shorthand for -filename)")
 	flag.Parse()
 
+	if filename == "" {
+		flag.Usage()
+		return
+	}
+
 	done := make(chan bool)
 	go tailFile(filename, config, done)
 	<-done
