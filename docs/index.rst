@@ -7,11 +7,11 @@ Logdriver
 
 Logdriver makes ephemeral logs available upstream as an HTTP Event Socket resources. Designed to make log files from Mesos_ tasks available.
 
-.. image:: https://travis-ci.org/smn/logdriver.svg
+.. image:: https://travis-ci.org/smn/logdriver.svg?branch=develop
     :target: https://travis-ci.org/smn/logdriver
     :alt: Continuous Integration
 
-.. image:: https://coveralls.io/repos/smn/logdriver/badge.png
+.. image:: https://coveralls.io/repos/smn/logdriver/badge.png?branch=develop
     :target: https://coveralls.io/r/smn/logdriver
     :alt: Code Coverage
 
