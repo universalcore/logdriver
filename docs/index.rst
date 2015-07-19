@@ -5,7 +5,7 @@ Logdriver
     :target: https://en.wikipedia.org/wiki/Log_driving
     :alt: Log Driving
 
-Logdriver makes ephemeral logs available downstream as an HTTP Event Source resources.
+Logdriver makes ephemeral logs available downstream as an HTTP Event Source resource.
 
 .. image:: https://travis-ci.org/smn/logdriver.svg?branch=develop
     :target: https://travis-ci.org/smn/logdriver
