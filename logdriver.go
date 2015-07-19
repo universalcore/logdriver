@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/ActiveState/tail"
 )
@@ -10,8 +11,6 @@ import (
 func main() {
 
 	var filename string
-	config := tail.Config{Follow: true}
-
 	flag.StringVar(&filename, "filename", "", "The file to tail.")
 	flag.StringVar(&filename, "F", "", " (shorthand for -filename)")
 	flag.Parse()
@@ -22,15 +21,18 @@ func main() {
 	}
 
 	done := make(chan bool)
-	go tailFile(filename, config, done)
+	go tailFile(filename, tail.Config{Follow: true}, done)
 	<-done
 }
 
 func tailFile(filename string, config tail.Config, done chan bool) {
+	// when function completes, notify via the channel
 	defer func() { done <- true }()
+
+	// start tailing
 	t, err := tail.TailFile(filename, config)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	for line := range t.Lines {
@@ -38,6 +40,6 @@ func tailFile(filename string, config tail.Config, done chan bool) {
 	}
 	err = t.Wait()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
