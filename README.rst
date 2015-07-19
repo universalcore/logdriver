@@ -5,8 +5,6 @@ Logdriver
     :target: https://en.wikipedia.org/wiki/Log_driving
     :alt: Log Driving
 
-Logdriver makes ephemeral logs available upstream as an HTTP Event Socket resources. Designed to make log files from Mesos_ tasks available.
-
 .. image:: https://travis-ci.org/smn/logdriver.svg?branch=develop
     :target: https://travis-ci.org/smn/logdriver
     :alt: Continuous Integration
@@ -18,5 +16,3 @@ Logdriver makes ephemeral logs available upstream as an HTTP Event Socket resour
 .. image:: https://readthedocs.org/projects/logdriver/badge/?version=latest
     :target: https://logdriver.readthedocs.org
     :alt: Logdriver Documentation
-
-.. _Mesos: http://mesos.apache.org
