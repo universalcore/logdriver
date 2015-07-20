@@ -38,28 +38,3 @@ func (l LogDriver) StopOnReceive(done <-chan bool) {
     <- done
     l.Stop()
 }
-
-/*
-
-defer func() { done <- true }()
-
-tail, err := LogDriver.tail()
-
-func tailFile(filename string, messages chan<- string, done chan<- bool) {
-
-    // start tailing
-    t, err := tail.TailFile(filename, tail.Config{Follow: true})
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-    for line := range t.Lines {
-        messages <- line.Text
-    }
-    err = t.Wait()
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-    }
-}
-
-*/
