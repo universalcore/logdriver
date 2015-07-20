@@ -1,102 +1,64 @@
 package main
 
 import (
-    "flag"
-    "github.com/ActiveState/tail"
-    "fmt"
-    "log"
-    "net/http"
+	"flag"
+	"log"
+
+	"github.com/ActiveState/tail"
+	"github.com/smn/logdriver/http"
 )
 
+type Subscriber struct {
+	filepath string
+	messages chan<- string
+}
+
+type ClientInterface struct {
+	registerSubscriber   chan Subscriber
+	deregisterSubscriber chan Subscriber
+}
+
 type LogDriver struct {
-    directory string
-    tails []*tail.Tail
-    clients map[chan string]bool
-    newClient chan chan string
-    defunctClients chan chan string
-    messages chan string
+	directory   string
+	tails       []*tail.Tail
+	subscribers []*Subscriber
 }
 
 func NewLogDriver(directory string) (l LogDriver) {
-    return LogDriver{
-        directory,
-        make([]*tail.Tail, 0, 0),
-        make(map[chan string]bool),
-        make(chan (chan string)),
-        make(chan (chan string)),
-        make(chan string),
-    }
+	return LogDriver{
+		directory,
+		make([]*tail.Tail, 0, 0),
+		make([]*Subscriber, 0, 0)}
 }
 
 func (l LogDriver) Tail(filepath string) (t *tail.Tail, err error) {
-    t, err = tail.TailFile(filepath, tail.Config{Follow: true})
-    l.tails = append(l.tails, t)
-    return t, err
+	t, err = tail.TailFile(filepath, tail.Config{Follow: true})
+	return t, err
 }
 
-// NOTE:    A bunch of this stuff comes from
-//          https://github.com/kljensen/golang-html5-sse-example/
-func (l LogDriver) Start(directory string, address string) {
-    go func () {
-        for {
-            select {
-
-            case s := <- l.newClient:
-                l.clients[s] = true
-                log.Println("Added new client.")
-
-            case s := <- l.defunctClients:
-                delete(l.clients, s)
-                log.Println("Removed new client.")
-
-            case msg := <- l.messages:
-                for s, _ := range l.clients {
-                    s <- msg
-                }
-                log.Println("Sent " + msg + " to all clients.")
-            }
-        }
-    }()
-    l.StartWebserver(address)
-}
-
-func (l LogDriver) Stop() {
-    for _, tail := range l.tails {
-        err := tail.Stop()
-        if err != nil {
-            fmt.Println(err)
-        }
-        tail.Cleanup()
-    }
-}
-
-type Subscriber interface {
-    Register(*l LogDriver)
-    messages chan<- string
-}
-
-func (l LogDriver) AddClient(filepath string, c ClientInterface) (tail tail.Tail) {
-    tail, err := l.Tail(filepath)
-    l.clients[c] = tail
-    go func() {
-        for {
-            tailLine, ok := <- tail.Lines
-            c.messages <- tailLine.Text
-        }
-    }()
-    return tail
-}
-
-func (l LogDriver) RemoveClient(filepath string, c ClientInterface) {
-    tail := l.clients[c]
-    delete(l.clients, c)
-    tail.Close()
-    tail.Cleanup()
-}
-
-func (l LogDriver) StopOnReceive(done <-chan bool) {
-    <- done
-    l.Stop()
+func (l LogDriver) RegisterClientInterface(v interface{}) {
+	ci := v.(ClientInterface)
+	go func() {
+		select {
+		case s := <-ci.registerSubscriber:
+			tail, _ := l.Tail(s.filepath)
+			go func() {
+				for {
+					tailLine, _ := <-tail.Lines
+					s.messages <- tailLine.Text
+				}
+			}()
+			l.subscribers = append(l.subscribers, &s)
+			log.Println("Subscribed " + s.filepath)
+		case s := <-ci.deregisterSubscriber:
+			for index, subscriber := range l.subscribers {
+				if *subscriber == s {
+					l.subscribers = append(l.subscribers[:index], l.subscribers[index+1:]...)
+					log.Println("Unsubscribed " + s.filepath)
+				}
+			}
+		}
+	}()
 }
 
 func main() {
@@ -115,5 +77,5 @@ func main() {
 	}
 
 	ld := NewLogDriver(directory)
-    ld.AddSubscriber(NewHTTPInterface(address))
+	ld.RegisterClientInterface(http.NewHTTPInterface(address))
 }

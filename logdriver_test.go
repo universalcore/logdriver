@@ -2,8 +2,10 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
+
 	"github.com/ActiveState/tail"
 )
 
@@ -13,9 +15,9 @@ type LogDriverTest struct {
 	*testing.T
 }
 
-// NOTE:	This is me learning more of go by studying the tail
-//			test cases. A bunch of this code is copied & paste across
-//			from tail's test suite.
+// NOTE:    This is me learning more of go by studying the tail
+//          test cases. A bunch of this code is copied & paste across
+//          from tail's test suite.
 func NewLogDriverTest(name string, t *testing.T) LogDriverTest {
 	lt := LogDriverTest{name, ".test/" + name, t}
 	err := os.MkdirAll(lt.path, os.ModeTemporary|0700)
@@ -46,7 +48,7 @@ func (lt LogDriverTest) AppendFile(name string, contents string) {
 }
 
 func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done chan bool) {
-	defer func () {done <- true}()
+	defer func() { done <- true }()
 
 	for idx, line := range lines {
 		tailedLine, ok := <-tail.Lines
@@ -72,16 +74,15 @@ func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done c
 	}
 }
 
-func TestTail(t *testing.T) {
-
-	lt := NewLogDriverTest("test_tail_file", t)
-	filePath := lt.CreateFile("test.txt", "foo\n")
-
-	ld := NewLogDriver("test_tail_file")
-	tail, _ := ld.Tail(filePath)
-
-	lt.AppendFile("test.txt", "bar\nbaz\n")
-	done := make(chan bool)
-	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
-	ld.StopOnReceive(done)
+type TestInterface struct {
 }
+
+func (ti TestInterface) Register(l LogDriver) {
+	log.Println("Registered")
+}
+
+// func TestNewLogDriver(t *testing.T) {
+//     ldt := NewLogDriverTest("test_new_log_driver", t)
+//     ldt.RegisterClientInterface(&TestInterface{})
+//     log.Println(ldt.clients)
+// }
