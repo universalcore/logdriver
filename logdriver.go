@@ -2,7 +2,6 @@ package main
 
 import (
     "flag"
-    "github.com/gorilla/mux"
     "github.com/ActiveState/tail"
     "fmt"
     "log"
@@ -37,7 +36,7 @@ func (l LogDriver) Tail(filepath string) (t *tail.Tail, err error) {
 
 // NOTE:    A bunch of this stuff comes from
 //          https://github.com/kljensen/golang-html5-sse-example/
-func (l LogDriver) Start(address string) {
+func (l LogDriver) Start(directory string, address string) {
     go func () {
         for {
             select {
@@ -45,7 +44,6 @@ func (l LogDriver) Start(address string) {
             case s := <- l.newClient:
                 l.clients[s] = true
                 log.Println("Added new client.")
-
 
             case s := <- l.defunctClients:
                 delete(l.clients, s)
@@ -62,52 +60,6 @@ func (l LogDriver) Start(address string) {
     l.StartWebserver(address)
 }
 
-func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    params := mux.Vars(r)
-    name := params["path"]
-    log.Println("NAME! " + name)
-
-    f, ok := w.(http.Flusher)
-    if !ok {
-		http.Error(w, "Streaming unsupported.", http.StatusInternalServerError)
-		return
-	}
-
-    // Set the headers related to event streaming.
-    w.Header().Set("Content-Type", "text/event-stream")
-    w.Header().Set("Cache-Control", "no-cache")
-    w.Header().Set("Connection", "keep-alive")
-
-    messageChan := make(chan string)
-    // got a new client, register it.
-	l.newClient <- messageChan
-
-    // wait for closed notifications and deregister client when received.
-    cn, ok := w.(http.CloseNotifier)
-    if !ok {
-        http.Error(w, "Cannot stream.", http.StatusInternalServerError)
-        return
-    }
-
-    for {
-        select {
-        case <-cn.CloseNotify():
-            l.defunctClients <- messageChan
-            log.Println("HTTP Connection closed.")
-        case message := <- messageChan:
-            fmt.Fprint(w, "data: %s\n\n", message)
-            f.Flush()
-        }
-    }
-}
-
-func (l LogDriver) StartWebserver(address string) {
-    router := mux.NewRouter()
-    router.HandleFunc("/tail/{path:.+}", l.ServeHTTP)
-    http.Handle("/", router)
-    http.ListenAndServe(address, nil)
-}
-
 func (l LogDriver) Stop() {
     for _, tail := range l.tails {
         err := tail.Stop()
@@ -116,6 +68,30 @@ func (l LogDriver) Stop() {
         }
         tail.Cleanup()
     }
+}
+
+type Subscriber interface {
+    Register(*l LogDriver)
+    messages chan<- string
+}
+
+func (l LogDriver) AddClient(filepath string, c ClientInterface) (tail tail.Tail) {
+    tail, err := l.Tail(filepath)
+    l.clients[c] = tail
+    go func() {
+        for {
+            tailLine, ok := <- tail.Lines
+            c.messages <- tailLine.Text
+        }
+    }()
+    return tail
+}
+
+func (l LogDriver) RemoveClient(filepath string, c ClientInterface) {
+    tail := l.clients[c]
+    delete(l.clients, c)
+    tail.Close()
+    tail.Cleanup()
 }
 
 func (l LogDriver) StopOnReceive(done <-chan bool) {
@@ -139,5 +115,5 @@ func main() {
 	}
 
 	ld := NewLogDriver(directory)
-	ld.Start(address)
+    ld.AddSubscriber(NewHTTPInterface(address))
 }
