@@ -19,4 +19,18 @@ Logdriver makes ephemeral logs available downstream as an HTTP Event Source reso
     :target: https://logdriver.readthedocs.org
     :alt: Logdriver Documentation
 
+Usage
+~~~~~
+
+::
+
+    $ logdriver -h
+    Usage of ./logdriver:
+      -a="0.0.0.0:3000":  (shorthand for -address)
+      -address="0.0.0.0:3000": The address to bind to.
+      -d="":  (shorthand for -directory)
+      -directory="": The directory to tail log files from.
+
+.. image:: logdriver.gif
+
 .. _Mesos: http://mesos.apache.org
