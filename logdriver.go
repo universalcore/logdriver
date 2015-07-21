@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -14,19 +15,20 @@ import (
 // The LogDriver object, use NewLogDriver(directory) to create an instance.
 type LogDriver struct {
 	directory string
+	Logger *log.Logger
 }
 
 // NewLogDriver creates a new LogDriver instance, only files in subdirectories
 // of the given directory are available for tailing from.
-func NewLogDriver(directory string) (l LogDriver) {
-	return LogDriver{directory}
+func NewLogDriver(directory string, logger *log.Logger) (l LogDriver) {
+	return LogDriver{directory, logger}
 }
 
 // Tail a file found in one of the subdirectories of the LogDriver's directory
 func (l LogDriver) Tail(filepath string) (t *tail.Tail, err error) {
 	t, err = tail.TailFile(
 		filepath,
-		tail.Config{Follow: true, MustExist: true, ReOpen: true})
+		tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: l.Logger})
 	return t, err
 }
 
@@ -41,7 +43,7 @@ func (l LogDriver) NewRouter() *mux.Router {
 func (l LogDriver) StartServer(address string) {
 	// when function completes, notify via the channel
 	http.Handle("/", l.NewRouter())
-	log.Printf("Listening on %s.\n", address)
+	l.Logger.Printf("Listening on %s.\n", address)
 	http.ListenAndServe(address, nil)
 }
 
@@ -51,6 +53,12 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	filepath, err := filepath.Abs(filepath.Join(l.directory, params["filepath"]))
 
+	// check if there's something there to begin with
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		http.Error(w, "File does not exist.", http.StatusNotFound)
+		return
+	}
+
 	// We need to be able to flush when new content arrives
 	f, ok := w.(http.Flusher)
 	if !ok {
@@ -58,7 +66,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Starting tail of %s\n.", filepath)
+	l.Logger.Printf("Starting tail of %s\n.", filepath)
 
 	tail, err := l.Tail(filepath)
 	if err != nil {
@@ -78,7 +86,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		<-notify
 		tail.Stop()
 		tail.Cleanup()
-		log.Printf("HTTP connection just closed, closed tail for %s.\n", filepath)
+		l.Logger.Printf("HTTP connection just closed, closed tail for %s.\n", filepath)
 	}()
 
 	// Wait for data to appear on the tail & relay to the browser connection
@@ -93,7 +101,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	err = tail.Wait()
 	if err != nil {
-		log.Println(err)
+		l.Logger.Println(err)
 	}
 
 }
@@ -113,6 +121,6 @@ func main() {
 		return
 	}
 
-	ld := NewLogDriver(directory)
+	ld := NewLogDriver(directory, tail.DefaultLogger)
 	ld.StartServer(address)
 }

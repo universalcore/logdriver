@@ -103,7 +103,7 @@ func TestTail(t *testing.T) {
 	lt := NewLogDriverTest("test_tail_file", t)
 	filePath := lt.CreateFile("test.txt", "foo\n")
 
-	ld := NewLogDriver("test_tail_file")
+	ld := NewLogDriver("test_tail_file", tail.DiscardingLogger)
 	tail, _ := ld.Tail(filePath)
 
 	lt.AppendFile("test.txt", "bar\nbaz\n")
@@ -131,7 +131,7 @@ func TestServeHTTP(t *testing.T) {
 	lt := NewLogDriverTest("test_serve_http", t)
 	lt.CreateFile("foo.txt", "foo\n")
 
-	ld := NewLogDriver(lt.path)
+	ld := NewLogDriver(lt.path, tail.DiscardingLogger)
 
 	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
 	w := NewClosableRecorder()
@@ -140,8 +140,21 @@ func TestServeHTTP(t *testing.T) {
 	go router.ServeHTTP(w, r)
 
 	lt.AppendFile("foo.txt", "bar\nbaz\n")
-
+	// NOTE: I'm doing something awfully wrong here
 	<-time.After(100 * time.Millisecond)
 	go lt.AssertRecorderOutput(w, []string{"data: foo", "data: bar", "data: baz"}, w.closer)
 
+}
+
+func TestServeHTTPNotFound(t *testing.T) {
+	lt := NewLogDriverTest("test_serve_http_not_found", t)
+	ld := NewLogDriver(lt.path, tail.DefaultLogger)
+
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	w := NewClosableRecorder()
+
+	ld.NewRouter().ServeHTTP(w, r)
+	if w.Code != 404 {
+		t.Fatal("Expecting a 404 error code.")
+	}
 }
