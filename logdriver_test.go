@@ -83,5 +83,6 @@ func TestTail(t *testing.T) {
 	lt.AppendFile("test.txt", "bar\nbaz\n")
 	done := make(chan bool)
 	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
-	ld.StopOnReceive(done)
+	<- done
+	ld.Stop()
 }
