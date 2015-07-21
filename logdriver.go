@@ -88,7 +88,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	err = tail.Wait()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 }

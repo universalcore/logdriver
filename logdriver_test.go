@@ -46,6 +46,8 @@ func (lt LogDriverTest) AppendFile(name string, contents string) {
 	}
 }
 
+// TestMain seems to be golang's way of providing hooks for setup & teardown
+// stuff
 func TestMain(m *testing.M) {
 	ret := m.Run()
 	os.RemoveAll(".test")
@@ -91,5 +93,4 @@ func TestTail(t *testing.T) {
 	done := make(chan bool)
 	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
 	<-done
-	ld.Stop()
 }
