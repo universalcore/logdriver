@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
 	"github.com/ActiveState/tail"
 )
 
@@ -45,8 +46,14 @@ func (lt LogDriverTest) AppendFile(name string, contents string) {
 	}
 }
 
+func TestMain(m *testing.M) {
+	ret := m.Run()
+	os.RemoveAll(".test")
+	os.Exit(ret)
+}
+
 func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done chan bool) {
-	defer func () {done <- true}()
+	defer func() { done <- true }()
 
 	for idx, line := range lines {
 		tailedLine, ok := <-tail.Lines
@@ -83,6 +90,6 @@ func TestTail(t *testing.T) {
 	lt.AppendFile("test.txt", "bar\nbaz\n")
 	done := make(chan bool)
 	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
-	<- done
+	<-done
 	ld.Stop()
 }
