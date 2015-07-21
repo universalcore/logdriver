@@ -2,8 +2,12 @@ package main
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ActiveState/tail"
 )
@@ -81,6 +85,19 @@ func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done c
 	}
 }
 
+func (lt LogDriverTest) AssertRecorderOutput(w *ClosableRecorder, lines []string, done chan<- bool) {
+	defer func() { done <- true }()
+
+	receivedLines := strings.Split(w.Body.String(), "\n\n")
+	for index, expectedLine := range lines {
+		receivedLine := receivedLines[index]
+		if expectedLine != receivedLine {
+			lt.Fatalf("unexpected response: expecting \"%s\" but got \"%s\"",
+				expectedLine, receivedLine)
+		}
+	}
+}
+
 func TestTail(t *testing.T) {
 
 	lt := NewLogDriverTest("test_tail_file", t)
@@ -93,4 +110,38 @@ func TestTail(t *testing.T) {
 	done := make(chan bool)
 	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
 	<-done
+}
+
+type ClosableRecorder struct {
+	*httptest.ResponseRecorder
+	closer chan bool
+}
+
+func NewClosableRecorder() *ClosableRecorder {
+	r := httptest.NewRecorder()
+	closer := make(chan bool)
+	return &ClosableRecorder{r, closer}
+}
+
+func (r *ClosableRecorder) CloseNotify() <-chan bool {
+	return r.closer
+}
+
+func TestServeHTTP(t *testing.T) {
+	lt := NewLogDriverTest("test_serve_http", t)
+	lt.CreateFile("foo.txt", "foo\n")
+
+	ld := NewLogDriver(lt.path)
+
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	w := NewClosableRecorder()
+
+	router := ld.NewRouter()
+	go router.ServeHTTP(w, r)
+
+	lt.AppendFile("foo.txt", "bar\nbaz\n")
+
+	<-time.After(100 * time.Millisecond)
+	go lt.AssertRecorderOutput(w, []string{"data: foo", "data: bar", "data: baz"}, w.closer)
+
 }

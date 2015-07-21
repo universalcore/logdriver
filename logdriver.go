@@ -30,12 +30,17 @@ func (l LogDriver) Tail(filepath string) (t *tail.Tail, err error) {
 	return t, err
 }
 
+// NewRouter returns the router to be used for routing HTTP requests
+func (l LogDriver) NewRouter() *mux.Router {
+	router := mux.NewRouter()
+	router.HandleFunc("/tail/{filepath:.+}", l.ServeHTTP).Methods("GET")
+	return router
+}
+
 // StartServer a webserver and bind it to the given address
 func (l LogDriver) StartServer(address string) {
 	// when function completes, notify via the channel
-	router := mux.NewRouter()
-	router.HandleFunc("/tail/{filepath:.+}", l.ServeHTTP).Methods("GET")
-	http.Handle("/", router)
+	http.Handle("/", l.NewRouter())
 	log.Printf("Listening on %s.\n", address)
 	http.ListenAndServe(address, nil)
 }
