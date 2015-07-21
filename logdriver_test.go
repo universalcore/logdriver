@@ -2,8 +2,13 @@ package main
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
+
 	"github.com/ActiveState/tail"
 )
 
@@ -45,8 +50,16 @@ func (lt LogDriverTest) AppendFile(name string, contents string) {
 	}
 }
 
+// TestMain seems to be golang's way of providing hooks for setup & teardown
+// stuff
+func TestMain(m *testing.M) {
+	ret := m.Run()
+	os.RemoveAll(".test")
+	os.Exit(ret)
+}
+
 func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done chan bool) {
-	defer func () {done <- true}()
+	defer func() { done <- true }()
 
 	for idx, line := range lines {
 		tailedLine, ok := <-tail.Lines
@@ -72,16 +85,76 @@ func (lt LogDriverTest) AssertTailOutput(tail *tail.Tail, lines []string, done c
 	}
 }
 
+func (lt LogDriverTest) AssertRecorderOutput(w *ClosableRecorder, lines []string, done chan<- bool) {
+	defer func() { done <- true }()
+
+	receivedLines := strings.Split(w.Body.String(), "\n\n")
+	for index, expectedLine := range lines {
+		receivedLine := receivedLines[index]
+		if expectedLine != receivedLine {
+			lt.Fatalf("unexpected response: expecting \"%s\" but got \"%s\"",
+				expectedLine, receivedLine)
+		}
+	}
+}
+
 func TestTail(t *testing.T) {
 
 	lt := NewLogDriverTest("test_tail_file", t)
 	filePath := lt.CreateFile("test.txt", "foo\n")
 
-	ld := NewLogDriver("test_tail_file")
+	ld := NewLogDriver("test_tail_file", tail.DiscardingLogger)
 	tail, _ := ld.Tail(filePath)
 
 	lt.AppendFile("test.txt", "bar\nbaz\n")
 	done := make(chan bool)
 	go lt.AssertTailOutput(tail, []string{"foo", "bar", "baz"}, done)
-	ld.StopOnReceive(done)
+	<-done
+}
+
+type ClosableRecorder struct {
+	*httptest.ResponseRecorder
+	closer chan bool
+}
+
+func NewClosableRecorder() *ClosableRecorder {
+	r := httptest.NewRecorder()
+	closer := make(chan bool)
+	return &ClosableRecorder{r, closer}
+}
+
+func (r *ClosableRecorder) CloseNotify() <-chan bool {
+	return r.closer
+}
+
+func TestServeHTTP(t *testing.T) {
+	lt := NewLogDriverTest("test_serve_http", t)
+	lt.CreateFile("foo.txt", "foo\n")
+
+	ld := NewLogDriver(lt.path, tail.DiscardingLogger)
+
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	w := NewClosableRecorder()
+
+	router := ld.NewRouter()
+	go router.ServeHTTP(w, r)
+
+	lt.AppendFile("foo.txt", "bar\nbaz\n")
+	// NOTE: I'm doing something awfully wrong here
+	<-time.After(100 * time.Millisecond)
+	go lt.AssertRecorderOutput(w, []string{"data: foo", "data: bar", "data: baz"}, w.closer)
+
+}
+
+func TestServeHTTPNotFound(t *testing.T) {
+	lt := NewLogDriverTest("test_serve_http_not_found", t)
+	ld := NewLogDriver(lt.path, tail.DefaultLogger)
+
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	w := NewClosableRecorder()
+
+	ld.NewRouter().ServeHTTP(w, r)
+	if w.Code != 404 {
+		t.Fatal("Expecting a 404 error code.")
+	}
 }
