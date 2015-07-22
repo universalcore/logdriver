@@ -5,7 +5,10 @@ export GOPATH=`pwd`
 mkdir ./bin
 mkdir ${BUILDDIR}/${REPO}
 
-bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer -o ./gvm-installer.sh
+bash ./gvm-installer.sh master gvm
+source gvm/gvm/scripts/gvm
+
 gvm install go1.4
 gvm use go1.4
 
