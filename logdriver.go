@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/ActiveState/tail"
@@ -15,7 +15,7 @@ import (
 // The LogDriver object, use NewLogDriver(directory) to create an instance.
 type LogDriver struct {
 	directory string
-	Logger *log.Logger
+	Logger    *log.Logger
 }
 
 // NewLogDriver creates a new LogDriver instance, only files in subdirectories
@@ -110,10 +110,13 @@ func main() {
 
 	var directory string
 	var address string
+	var logfile string
 	flag.StringVar(&directory, "directory", "", "The directory to tail log files from.")
 	flag.StringVar(&directory, "d", "", " (shorthand for -directory)")
 	flag.StringVar(&address, "address", "0.0.0.0:3000", "The address to bind to.")
 	flag.StringVar(&address, "a", "0.0.0.0:3000", " (shorthand for -address)")
+	flag.StringVar(&logfile, "logfile", "", "Which file to log to (defaults to stdout)")
+	flag.StringVar(&logfile, "l", "", "Which file to log to (defaults to stdout)")
 	flag.Parse()
 
 	if directory == "" {
@@ -121,6 +124,17 @@ func main() {
 		return
 	}
 
-	ld := NewLogDriver(directory, tail.DefaultLogger)
+	var logOutput *os.File
+	var err error
+	if logfile != "" {
+		logOutput, err = os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("Error opening file: %v", err)
+		}
+	} else {
+		logOutput = os.Stdout
+	}
+
+	ld := NewLogDriver(directory, log.New(logOutput, "", log.LstdFlags))
 	ld.StartServer(address)
 }
