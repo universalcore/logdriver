@@ -1,7 +1,7 @@
 #!/bin/bash
 cd "${WORKSPACE}/${REPO}"
 
-source ./install_golang.sh
+source ./scripts/install_golang.sh
 install_golang go1.4.1
 
 mkdir ${BUILDDIR}/${REPO}
