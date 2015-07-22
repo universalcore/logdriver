@@ -1,6 +1,5 @@
 #!/bin/bash
 cd "${WORKSPACE}/${REPO}"
-export GOPATH=`pwd`
 
 mkdir ./bin
 mkdir ${BUILDDIR}/${REPO}
@@ -11,6 +10,8 @@ source gvm/gvm/scripts/gvm
 
 gvm install go1.4
 gvm use go1.4
+
+export GOPATH=`pwd`
 
 go get ./... -v
 go build -o ${BUILDDIR}/${REPO}/logdriver -v
