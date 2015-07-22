@@ -10,6 +10,9 @@ source gvm/gvm/scripts/gvm
 
 gvm install go1.4
 gvm use go1.4
+
+export GOPATH=`pwd`
+
 gvm linkthis
 
 go get ./... -v
