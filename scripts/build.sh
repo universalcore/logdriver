@@ -8,7 +8,7 @@ mkdir ${BUILDDIR}/${REPO}
 curl -sL -o ./bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme
 chmod +x ./bin/gimme
 
-eval "$(gimme 1.4)"
+eval "$(./bin/gimme 1.4)"
 
 go get ./... -v
 go build -o ${BUILDDIR}/${REPO}/logdriver -v
