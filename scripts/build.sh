@@ -3,14 +3,13 @@ cd "${WORKSPACE}/${REPO}"
 
 
 GOLANG_TAG="go1.4.1"
-INSTALL_DIR=./go-builds/$GOLANG_TAG
+INSTALL_DIR=$WORKSPACE/$REPO/go-builds/$GOLANG_TAG
 if [ ! -d $INSTALL_DIR ]; then
     mkdir -p $INSTALL_DIR
     git clone https://go.googlesource.com/go $INSTALL_DIR
     cd $INSTALL_DIR
     git checkout $GOLANG_TAG
-    cd src
-    bash ./all.bash
+    bash ./src/make.bash
 fi
 
 mkdir ${BUILDDIR}/${REPO}
