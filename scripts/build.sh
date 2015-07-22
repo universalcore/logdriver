@@ -1,9 +1,7 @@
 #!/bin/bash
-cd "${WORKSPACE}/${REPO}"
-
-
+REPO_DIR="$WORKSPACE/$REPO"
 GOLANG_TAG="go1.4.1"
-INSTALL_DIR=$WORKSPACE/$REPO/go-builds/$GOLANG_TAG
+INSTALL_DIR=$REPO_DIR/go-builds/$GOLANG_TAG
 if [ ! -d $INSTALL_DIR ]; then
     mkdir -p $INSTALL_DIR
     git clone https://go.googlesource.com/go $INSTALL_DIR
@@ -17,5 +15,6 @@ mkdir ${BUILDDIR}/${REPO}
 
 export GOPATH=`pwd`
 
-$INSTALL_DIR/bin/go get ./... -v
+cd $REPO_DIR
+$INSTALL_DIR/bin/go get ./...
 $INSTALL_DIR/bin/go build -o ${BUILDDIR}/${REPO}/logdriver -v
