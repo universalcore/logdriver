@@ -1,4 +1,3 @@
 buildscript: scripts/build.sh
 postinstall: scripts/postinstall.sh
-dependencies:
-  - golang
+dependencies: []
