@@ -3,7 +3,7 @@ cd "${WORKSPACE}/${REPO}"
 
 
 GOLANG_TAG="go1.4.1"
-INSTALL_DIR=$HOME/go-builds/$GOLANG_TAG
+INSTALL_DIR=./go-builds/$GOLANG_TAG
 mkdir -p $INSTALL_DIR
 git clone https://go.googlesource.com/go $INSTALL_DIR
 cd $INSTALL_DIR
