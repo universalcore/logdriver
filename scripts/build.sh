@@ -16,5 +16,6 @@ mkdir ${BUILDDIR}/${REPO}
 export GOPATH=`pwd`
 
 cd $REPO_DIR
-$INSTALL_DIR/bin/go get ./...
+$INSTALL_DIR/bin/go get github.com/ActiveState/tail
+$INSTALL_DIR/bin/go get github.com/gorilla/mux
 $INSTALL_DIR/bin/go build -o ${BUILDDIR}/${REPO}/logdriver -v
