@@ -9,7 +9,8 @@ if [ ! -d $INSTALL_DIR ]; then
     git clone https://go.googlesource.com/go $INSTALL_DIR
     cd $INSTALL_DIR
     git checkout $GOLANG_TAG
-    bash ./src/make.bash
+    cd src
+    bash ./make.bash
 fi
 
 mkdir ${BUILDDIR}/${REPO}
