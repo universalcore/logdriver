@@ -15,5 +15,5 @@ mkdir ${BUILDDIR}/${REPO}
 
 export GOPATH=`pwd`
 
-$HOME/bin/go get ./... -v
-$HOME/bin/go build -o ${BUILDDIR}/${REPO}/logdriver -v
+$INSTALL_DIR/bin/go get ./... -v
+$INSTALL_DIR/bin/go build -o ${BUILDDIR}/${REPO}/logdriver -v
