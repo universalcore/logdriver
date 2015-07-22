@@ -5,12 +5,12 @@ Logdriver
     :target: https://en.wikipedia.org/wiki/Log_driving
     :alt: Log Driving
 
-.. image:: https://travis-ci.org/smn/logdriver.svg?branch=develop
-    :target: https://travis-ci.org/smn/logdriver
+.. image:: https://travis-ci.org/universalcore/logdriver.svg?branch=develop
+    :target: https://travis-ci.org/universalcore/logdriver
     :alt: Continuous Integration
 
-.. image:: https://coveralls.io/repos/smn/logdriver/badge.png?branch=develop
-    :target: https://coveralls.io/r/smn/logdriver
+.. image:: https://coveralls.io/repos/universalcore/logdriver/badge.png?branch=develop
+    :target: https://coveralls.io/r/universalcore/logdriver
     :alt: Code Coverage
 
 .. image:: https://readthedocs.org/projects/logdriver/badge/?version=latest
