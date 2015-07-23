@@ -15,13 +15,30 @@ import (
 // The LogDriver object, use NewLogDriver(directory) to create an instance.
 type LogDriver struct {
 	directory string
+	cors      StringSliceVar
 	Logger    *log.Logger
+}
+
+// StringSliceVar allows one to accept multiple command line arguments as string
+// values and collect them in a slice of strings
+type StringSliceVar []string
+
+var cors StringSliceVar
+
+func (i *StringSliceVar) String() string {
+	return fmt.Sprintf("%s", *i)
+}
+
+// Set adds a value to the String Slice
+func (i *StringSliceVar) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }
 
 // NewLogDriver creates a new LogDriver instance, only files in subdirectories
 // of the given directory are available for tailing from.
-func NewLogDriver(directory string, logger *log.Logger) (l LogDriver) {
-	return LogDriver{directory, logger}
+func NewLogDriver(directory string, cors StringSliceVar, logger *log.Logger) (l LogDriver) {
+	return LogDriver{directory, cors, logger}
 }
 
 // Tail a file found in one of the subdirectories of the LogDriver's directory
@@ -77,7 +94,9 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	for _, originAllowed := range l.cors {
+		w.Header().Add("Access-Control-Allow-Origin", originAllowed)
+	}
 	f.Flush()
 
 	// Get notified when clients go away so we can clean up properly.
@@ -109,19 +128,30 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	var directory string
-	var address string
-	var logfile string
 	flag.StringVar(&directory, "directory", "", "The directory to tail log files from.")
 	flag.StringVar(&directory, "d", "", " (shorthand for -directory)")
+
+	var address string
 	flag.StringVar(&address, "address", "0.0.0.0:3000", "The address to bind to.")
 	flag.StringVar(&address, "a", "0.0.0.0:3000", " (shorthand for -address)")
+
+	var logfile string
 	flag.StringVar(&logfile, "logfile", "", "Which file to log to (defaults to stdout)")
-	flag.StringVar(&logfile, "l", "", "Which file to log to (defaults to stdout)")
+	flag.StringVar(&logfile, "l", "", "(shorthand for -logfile)")
+
+	var cors StringSliceVar
+	flag.Var(&cors, "cors", "Whitelisted URLs for CORS (defaults to [*])")
+	flag.Var(&cors, "-c", "(shorthand for -cors)")
+
 	flag.Parse()
 
 	if directory == "" {
 		flag.Usage()
 		return
+	}
+
+	if len(cors) == 0 {
+		cors.Set("*")
 	}
 
 	var logOutput *os.File
@@ -135,6 +165,6 @@ func main() {
 		logOutput = os.Stdout
 	}
 
-	ld := NewLogDriver(directory, log.New(logOutput, "", log.LstdFlags))
+	ld := NewLogDriver(directory, cors, log.New(logOutput, "", log.LstdFlags))
 	ld.StartServer(address)
 }

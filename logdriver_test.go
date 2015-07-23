@@ -103,7 +103,7 @@ func TestTail(t *testing.T) {
 	lt := NewLogDriverTest("test_tail_file", t)
 	filePath := lt.CreateFile("test.txt", "foo\n")
 
-	ld := NewLogDriver("test_tail_file", tail.DiscardingLogger)
+	ld := NewLogDriver("test_tail_file", []string{"*"}, tail.DiscardingLogger)
 	tail, _ := ld.Tail(filePath)
 
 	lt.AppendFile("test.txt", "bar\nbaz\n")
@@ -131,7 +131,7 @@ func TestServeHTTP(t *testing.T) {
 	lt := NewLogDriverTest("test_serve_http", t)
 	lt.CreateFile("foo.txt", "foo\n")
 
-	ld := NewLogDriver(lt.path, tail.DiscardingLogger)
+	ld := NewLogDriver(lt.path, []string{"*"}, tail.DiscardingLogger)
 
 	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
 	w := NewClosableRecorder()
@@ -148,7 +148,7 @@ func TestServeHTTP(t *testing.T) {
 
 func TestServeHTTPNotFound(t *testing.T) {
 	lt := NewLogDriverTest("test_serve_http_not_found", t)
-	ld := NewLogDriver(lt.path, tail.DefaultLogger)
+	ld := NewLogDriver(lt.path, []string{"*"}, tail.DefaultLogger)
 
 	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
 	w := NewClosableRecorder()
@@ -156,5 +156,25 @@ func TestServeHTTPNotFound(t *testing.T) {
 	ld.NewRouter().ServeHTTP(w, r)
 	if w.Code != 404 {
 		t.Fatal("Expecting a 404 error code.")
+	}
+}
+
+func TestCors(t *testing.T) {
+	lt := NewLogDriverTest("test_serve_http", t)
+	lt.CreateFile("foo.txt", "foo\n")
+	ld := NewLogDriver(lt.path, StringSliceVar{"http://example.com", "http://example.org"}, tail.DiscardingLogger)
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	w := NewClosableRecorder()
+	go ld.NewRouter().ServeHTTP(w, r)
+	// NOTE: I'm doing something awfully wrong here
+	<-time.After(100 * time.Millisecond)
+	w.closer <- true
+	key := http.CanonicalHeaderKey("Access-Control-Allow-Origin")
+	allowed_origins := w.Header()[key]
+	if allowed_origins[0] != "http://example.com" {
+		t.Fatal("First Cors header not set correctly.")
+	}
+	if allowed_origins[1] != "http://example.org" {
+		t.Fatal("Second Cors header not set correctly.")
 	}
 }
