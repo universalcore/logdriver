@@ -104,7 +104,7 @@ func TestTail(t *testing.T) {
 	filePath := lt.CreateFile("test.txt", "foo\n")
 
 	ld := NewLogDriver("test_tail_file", []string{"*"}, tail.DiscardingLogger)
-	tail, _ := ld.Tail(filePath)
+	tail, _ := ld.Tail(filePath, 0)
 
 	lt.AppendFile("test.txt", "bar\nbaz\n")
 	done := make(chan bool)

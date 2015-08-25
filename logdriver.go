@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"path/filepath"
 
 	"github.com/ActiveState/tail"
@@ -42,10 +43,17 @@ func NewLogDriver(directory string, cors StringSliceVar, logger *log.Logger) (l 
 }
 
 // Tail a file found in one of the subdirectories of the LogDriver's directory
-func (l LogDriver) Tail(filepath string) (t *tail.Tail, err error) {
-	t, err = tail.TailFile(
-		filepath,
-		tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: l.Logger})
+func (l LogDriver) Tail(filepath string, offset int64) (t *tail.Tail, err error) {
+	config := tail.Config{
+		Follow:    true,
+		MustExist: true,
+		ReOpen:    true,
+		Logger:    l.Logger,
+	}
+	if offset != 0 {
+		config.Location = &tail.SeekInfo{-offset, os.SEEK_END}
+	}
+	t, err = tail.TailFile(filepath, config)
 	return t, err
 }
 
@@ -68,6 +76,11 @@ func (l LogDriver) StartServer(address string) {
 func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get the params from the URL path
 	params := mux.Vars(r)
+	n := r.FormValue("n")
+	if n == "" {
+		n = "0"
+	}
+	offset, _ := strconv.ParseInt(n, 10, 64)
 	filepath, err := filepath.Abs(filepath.Join(l.directory, params["filepath"]))
 
 	// check if there's something there to begin with
@@ -85,7 +98,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Logger.Printf("Starting tail of %s\n.", filepath)
 
-	tail, err := l.Tail(filepath)
+	tail, err := l.Tail(filepath, offset)
 	if err != nil {
 		http.Error(w, "Failed to tail file.", http.StatusInternalServerError)
 		return
