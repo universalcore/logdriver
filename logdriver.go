@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"path/filepath"
+	"strconv"
 
 	"github.com/ActiveState/tail"
 	"github.com/gorilla/mux"
@@ -96,7 +96,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.Logger.Printf("Starting tail of %s\n.", filepath)
+	l.Logger.Printf("Starting tail of %s from %s.\n", filepath, n)
 
 	tail, err := l.Tail(filepath, offset)
 	if err != nil {
