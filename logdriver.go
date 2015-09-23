@@ -51,7 +51,9 @@ func (l LogDriver) Tail(filepath string, offset int64) (t *tail.Tail, err error)
 		Logger:    l.Logger,
 	}
 	if offset != 0 {
-		config.Location = &tail.SeekInfo{-offset, os.SEEK_END}
+		config.Location = &tail.SeekInfo{offset, os.SEEK_SET}
+	} else {
+		config.Location = &tail.SeekInfo{0, os.SEEK_END}
 	}
 	t, err = tail.TailFile(filepath, config)
 	return t, err
@@ -78,7 +80,10 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	n := r.FormValue("n")
 	if n == "" {
-		n = "0"
+		n = r.Header.Get("Last-Event-ID")
+		if n == "" {
+			n = "0"
+		}
 	}
 	offset, _ := strconv.ParseInt(n, 10, 64)
 	filepath, err := filepath.Abs(filepath.Join(l.directory, params["filepath"]))
@@ -124,7 +129,12 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Wait for data to appear on the tail & relay to the browser connection
 	go func() {
 		for line := range tail.Lines {
-			fmt.Fprintf(w, "data: %s\n\n", line.Text)
+			offset, _ := tail.Tell()
+			fmt.Fprint(w, "event:log\n")
+			fmt.Fprintf(w, "id: %d\n", offset)
+			fmt.Fprintf(w, "data: %s\n", line.Text)
+			fmt.Fprint(w, "retry: 0\n")
+			fmt.Fprint(w, "\n")
 			f.Flush()
 		}
 		tail.Stop()
