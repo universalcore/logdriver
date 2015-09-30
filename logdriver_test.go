@@ -104,7 +104,7 @@ func TestTail(t *testing.T) {
 	filePath := lt.CreateFile("test.txt", "foo\n")
 
 	ld := NewLogDriver("test_tail_file", []string{"*"}, tail.DiscardingLogger)
-	tail, _ := ld.Tail(filePath, 0)
+	tail, _ := ld.Tail(filePath, -12)
 
 	lt.AppendFile("test.txt", "bar\nbaz\n")
 	done := make(chan bool)
@@ -133,16 +133,18 @@ func TestServeHTTP(t *testing.T) {
 
 	ld := NewLogDriver(lt.path, []string{"*"}, tail.DiscardingLogger)
 
-	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt", nil)
+	r, _ := http.NewRequest("GET", "http://localhost:3000/tail/foo.txt?n=-12", nil)
 	w := NewClosableRecorder()
-
 	router := ld.NewRouter()
 	go router.ServeHTTP(w, r)
 
 	lt.AppendFile("foo.txt", "bar\nbaz\n")
-	// NOTE: I'm doing something awfully wrong here
 	<-time.After(100 * time.Millisecond)
-	go lt.AssertRecorderOutput(w, []string{"data: foo", "data: bar", "data: baz"}, w.closer)
+	go lt.AssertRecorderOutput(w, []string{
+			"event: log\nid: 4\ndata: foo\nretry: 0",
+			"event: log\nid: 12\ndata: bar\nretry: 0",
+			"event: log\nid: 12\ndata: baz\nretry: 0",
+		}, w.closer)
 
 }
 

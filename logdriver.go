@@ -50,8 +50,10 @@ func (l LogDriver) Tail(filepath string, offset int64) (t *tail.Tail, err error)
 		ReOpen:    true,
 		Logger:    l.Logger,
 	}
-	if offset != 0 {
+	if offset > 0 {
 		config.Location = &tail.SeekInfo{offset, os.SEEK_SET}
+	} else if offset < 0 {
+		config.Location = &tail.SeekInfo{offset, os.SEEK_END}
 	} else {
 		config.Location = &tail.SeekInfo{0, os.SEEK_END}
 	}
@@ -78,9 +80,9 @@ func (l LogDriver) StartServer(address string) {
 func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get the params from the URL path
 	params := mux.Vars(r)
-	n := r.FormValue("n")
+	n := r.Header.Get("Last-Event-ID")
 	if n == "" {
-		n = r.Header.Get("Last-Event-ID")
+		n = r.FormValue("n")
 		if n == "" {
 			n = "0"
 		}
@@ -130,7 +132,7 @@ func (l LogDriver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		for line := range tail.Lines {
 			offset, _ := tail.Tell()
-			fmt.Fprint(w, "event:log\n")
+			fmt.Fprint(w, "event: log\n")
 			fmt.Fprintf(w, "id: %d\n", offset)
 			fmt.Fprintf(w, "data: %s\n", line.Text)
 			fmt.Fprint(w, "retry: 0\n")
