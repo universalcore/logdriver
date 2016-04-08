@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ActiveState/tail"
+	"github.com/hpcloud/tail"
 )
 
 type LogDriverTest struct {

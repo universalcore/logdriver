@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/ActiveState/tail"
+	"github.com/hpcloud/tail"
 	"github.com/gorilla/mux"
 )
 
